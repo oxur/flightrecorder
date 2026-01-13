@@ -9,11 +9,11 @@
 
 *A system-level service that preserves  ephemeral text input, so that work doesn't disappear after critical failures*
 
-Like an airplane's black box, `flightrecorder` runs quietly in the background, capturing your text input across applications. When disaster strikes—app crashes, network failures, accidental refreshes, or just plain bugs—your work is safe and recoverable.
+Like the infamous "black box", `flightrecorder` runs quietly in the background, capturing select text input across applications. When disaster strikes—app crashes, network failures, accidental refreshes, or just plain bugs—your work is safe and recoverable.
 
 ## The Problem
 
-Modern applications are shockingly bad at preserving your work:
+Web and desktop applications are shockingly bad at preserving your work:
 
 - **App crashes** wipe out that detailed prompt you spent 10 minutes crafting
 - **Network errors** swallow form submissions into the void
@@ -21,7 +21,7 @@ Modern applications are shockingly bad at preserving your work:
 - **Session timeouts** discard everything without warning
 - **Buggy apps** throw errors and auto-refresh, taking your input with them
 
-The psychological toll is real: the anxiety of potential data loss poisons the entire experience of using otherwise-good tools. You shouldn't need to defensively copy everything to a text editor "just in case."
+The psychological toll is real: a few bad experiences of data loss poisons the entire experience of using otherwise-good tools. You shouldn't need to break your workflow, disrupting your chain of thought, just to defensively copy everything to a text editor because applications aren't doing their jobs.
 
 ## The Solution
 
@@ -39,7 +39,7 @@ The psychological toll is real: the anxiety of potential data loss poisons the e
 
 ```bash
 # From source
-git clone https://github.com/YOUR_USERNAME/flightrecorder.git
+git clone https://github.com/oxur/flightrecorder.git
 cd flightrecorder
 cargo build --release
 cargo install --path .
@@ -178,7 +178,7 @@ flightrecorder/
 | macOS | ✅ | ✅ (Accessibility API) | Primary target |
 | Linux (X11) | ✅ | ✅ (AT-SPI) | Primary target |
 | Linux (Wayland) | ✅ | ⚠️ (Limited by protocol) | Best effort |
-| Windows | ❌ | ❌ | Not planned |
+| Windows | ❌ | ❌ | Not planned, but contributors welcome |
 
 ## Building
 
@@ -205,18 +205,9 @@ RUST_LOG=debug cargo run -- daemon start
 | Privacy-focused | ✅ | ❌ | Partial |
 | Captures text fields | ✅ | Via keystrokes | ❌ |
 | Captures clipboard | ✅ | Sometimes | ✅ |
-| Filters sensitive data | ✅ | ❌ | ❌ |
+| Filters out sensitive data | ✅ | ❌ | ❌ |
 | Searchable history | ✅ | Sometimes | Sometimes |
 | No raw keylogging | ✅ | ❌ | ✅ |
-
-## Why "flightrecorder"?
-
-Like an airplane's flight data recorder (black box):
-
-- Runs silently in the background
-- You forget it's there until you need it
-- Invaluable for disaster recovery
-- Captures just enough to reconstruct what happened
 
 ## Contributing
 
@@ -224,6 +215,7 @@ Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guideli
 
 Areas where help is especially appreciated:
 
+- Windows support
 - Wayland text field capture improvements
 - Additional platform support
 - Privacy pattern suggestions
@@ -231,7 +223,7 @@ Areas where help is especially appreciated:
 
 ### Setup
 
-This repo requires that you have the following remotes set up:
+To use some of the admin `Makefile` targets, this repo expects that you have the following remotes set up:
 
 ```
 $ git remote -v
