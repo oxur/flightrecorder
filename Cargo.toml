@@ -53,6 +53,9 @@ regex = "1.10"
 # Hashing for deduplication
 blake3 = "1.5"
 
+# Clipboard access
+clipboard-rs = "0.2"
+
 # System directories
 dirs = "5.0"
 

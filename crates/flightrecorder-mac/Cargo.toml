@@ -16,7 +16,23 @@ name = "flightrecorder_mac"
 path = "src/lib.rs"
 
 [dependencies]
-# macOS-specific dependencies will go here
+# Clipboard monitoring
+clipboard-rs.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Time handling
+chrono.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Hashing for change detection
+blake3.workspace = true
+
+# Error handling
+thiserror.workspace = true
 
 [lints]
 workspace = true
