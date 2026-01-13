@@ -228,18 +228,18 @@ format:
 .PHONY: coverage
 coverage:
 	@echo "$(BLUE)Generating test coverage report...$(RESET)"
-	@echo "$(CYAN)• Running tests with coverage (treebeard crate only)...$(RESET)"
-	@cd crates/treebeard && cargo llvm-cov --lib --no-default-features
+	@echo "$(CYAN)• Running tests with coverage ...$(RESET)"
+	@cargo llvm-cov --lib --no-default-features
 	@echo "$(GREEN)✓ Coverage report generated$(RESET)"
-	@echo "$(YELLOW)→ For detailed HTML report, run: cd crates/treebeard && cargo llvm-cov --html --lib --no-default-features$(RESET)"
+	@echo "$(YELLOW)→ For detailed HTML report, run: cargo llvm-cov --html --lib --no-default-features$(RESET)"
 
 .PHONY: coverage-html
 coverage-html:
 	@echo "$(BLUE)Generating HTML coverage report...$(RESET)"
-	@echo "$(CYAN)• Running tests with coverage (treebeard crate only)...$(RESET)"
-	@cd crates/treebeard && cargo llvm-cov --html --lib --no-default-features
+	@echo "$(CYAN)• Running tests with coverage ...$(RESET)"
+	@cargo llvm-cov --html --lib --no-default-features
 	@echo "$(GREEN)✓ HTML coverage report generated$(RESET)"
-	@echo "$(CYAN)→ Report: crates/treebeard/target/llvm-cov/html/index.html$(RESET)"
+	@echo "$(CYAN)→ Report: target/llvm-cov/html/index.html$(RESET)"
 
 # Combined check targets
 .PHONY: check
