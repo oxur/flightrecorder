@@ -8,11 +8,21 @@
 #![warn(missing_debug_implementations)]
 #![deny(unsafe_code)]
 
+pub mod accessibility;
 pub mod clipboard;
+pub mod permissions;
 
+pub use accessibility::{
+    AccessibilityError, AccessibilityMonitor, AccessibilityMonitorConfig,
+    AccessibilityMonitorHandle, FocusedTextField, TextFieldCapture,
+};
 pub use clipboard::{
     ClipboardCapture, ClipboardError, ClipboardMonitor, ClipboardMonitorConfig,
     ClipboardMonitorHandle,
+};
+pub use permissions::{
+    check_permission, get_permission_instructions, is_accessibility_enabled,
+    request_accessibility_permission, PermissionError, PermissionStatus,
 };
 
 /// Initialize macOS-specific components.
@@ -49,10 +59,26 @@ mod tests {
     }
 
     #[test]
-    fn test_exports() {
-        // Verify that public types are accessible
+    fn test_clipboard_exports() {
+        // Verify that public clipboard types are accessible
         let _ = ClipboardMonitorConfig::default();
         let monitor = ClipboardMonitor::new();
         assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_accessibility_exports() {
+        // Verify that public accessibility types are accessible
+        let _ = AccessibilityMonitorConfig::default();
+        let monitor = AccessibilityMonitor::new();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_permission_exports() {
+        // Verify that permission functions are accessible
+        let status = check_permission();
+        // Status should have a valid description
+        assert!(!status.description.is_empty());
     }
 }

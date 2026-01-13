@@ -56,6 +56,9 @@ blake3 = "1.5"
 # Clipboard access
 clipboard-rs = "0.2"
 
+# macOS accessibility
+macos-accessibility-client = "0.0.1"
+
 # System directories
 dirs = "5.0"
 

@@ -19,6 +19,9 @@ path = "src/lib.rs"
 # Clipboard monitoring
 clipboard-rs.workspace = true
 
+# Accessibility API
+macos-accessibility-client.workspace = true
+
 # Async runtime
 tokio.workspace = true
 
