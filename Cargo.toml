@@ -53,6 +53,9 @@ regex = "1.10"
 # Hashing for deduplication
 blake3 = "1.5"
 
+# System directories
+dirs = "5.0"
+
 # Design docs (dev only)
 oxur-odm = "0.1"
 

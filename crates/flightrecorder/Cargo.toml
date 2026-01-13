@@ -49,6 +49,9 @@ regex.workspace = true
 # Hashing for deduplication
 blake3.workspace = true
 
+# System directories
+dirs.workspace = true
+
 # Platform-specific dependencies are automatically included based on target OS
 [target.'cfg(target_os = "linux")'.dependencies]
 flightrecorder-linux = { version = "0.0.1", path = "../flightrecorder-linux" }
