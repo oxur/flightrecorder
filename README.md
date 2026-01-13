@@ -21,7 +21,11 @@ Web and desktop applications are shockingly bad at preserving your work:
 - **Session timeouts** discard everything without warning
 - **Buggy apps** throw errors and auto-refresh, taking your input with them
 
-The psychological toll is real: a few bad experiences of data loss poisons the entire experience of using otherwise-good tools. You shouldn't need to break your workflow, disrupting your chain of thought, just to defensively copy everything to a text editor because applications aren't doing their jobs.
+You shouldn't need to break your workflow, disrupting your chain of thought, just to defensively copy everything to a text editor because applications aren't doing their jobs. That's adding a broken process to a broken tool. A transparent solution is needed.
+
+But *why now*? This has been a problem for decades, why is this experience now so painful as to force the creation of this tool-based solution?
+
+Simply put, it's indirectly due to all the AI work happening on a daily basis. The time that we take to write instructions, prompts, etc., is the distillation of years of experience in problem-solving, given to AIs in a form that will allow them to do vast amounts of work in very short amounts of time. As such, the growing value per word has highlighted new costs for the loss per word. If an hour's worth of writing results in the creation of something of market value in the 10k or 100k currency, the loss of that hour is measurably (eventually) greater now than it used to be. This is a tool to safeguard that value.
 
 ## The Solution
 
