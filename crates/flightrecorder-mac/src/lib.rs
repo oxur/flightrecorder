@@ -10,6 +10,7 @@
 
 pub mod accessibility;
 pub mod clipboard;
+pub mod monitor;
 pub mod permissions;
 
 pub use accessibility::{
@@ -19,6 +20,10 @@ pub use accessibility::{
 pub use clipboard::{
     ClipboardCapture, ClipboardError, ClipboardMonitor, ClipboardMonitorConfig,
     ClipboardMonitorHandle,
+};
+pub use monitor::{
+    create_monitors, CaptureData, CaptureType, MacAccessibilityMonitor, MacClipboardMonitor,
+    MacMonitorHandle, MonitorStatus, MonitorType,
 };
 pub use permissions::{
     check_permission, get_permission_instructions, is_accessibility_enabled,
@@ -80,5 +85,13 @@ mod tests {
         let status = check_permission();
         // Status should have a valid description
         assert!(!status.description.is_empty());
+    }
+
+    #[test]
+    fn test_monitor_exports() {
+        // Verify that monitor types are accessible
+        let (clipboard, accessibility) = create_monitors();
+        assert!(!clipboard.is_running());
+        assert!(!accessibility.is_running());
     }
 }

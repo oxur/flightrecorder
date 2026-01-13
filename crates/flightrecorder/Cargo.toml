@@ -40,6 +40,9 @@ tracing-subscriber.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 
+# Async traits
+async-trait.workspace = true
+
 # Time
 chrono.workspace = true
 
