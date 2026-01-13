@@ -1,0 +1,4 @@
+/target
+.claude/
+assets/ai/ai-rust
+/bin

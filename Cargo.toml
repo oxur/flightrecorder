@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/design",
+    "crates/flightrecorder",
+    "crates/flightrecorder-linux",
+    "crates/flightrecorder-mac",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75"
+authors = ["Duncan McGreggor <oubiwan@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Cross-platform system recorder"
+repository = "https://github.com/oxur/flightrecorder"
+readme = "README.md"
+keywords = ["recorder", "system", "cross-platform"]
+categories = ["development-tools"]
+
+[workspace.dependencies]
+# Shared dependencies across crates
+clap = { version = "4.5", features = ["derive"] }
+oxur-odm = "0.1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+cargo = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }

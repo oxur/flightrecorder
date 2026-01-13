@@ -1,0 +1,22 @@
+[package]
+name = "flightrecorder-linux"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Linux-specific implementation for flightrecorder"
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "flightrecorder_linux"
+path = "src/lib.rs"
+
+[dependencies]
+# Linux-specific dependencies will go here
+
+[lints]
+workspace = true

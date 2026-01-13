@@ -1,0 +1,32 @@
+[package]
+name = "flightrecorder"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "frec"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+
+# Platform-specific dependencies are automatically included based on target OS
+[target.'cfg(target_os = "linux")'.dependencies]
+flightrecorder-linux = { version = "0.0.1", path = "../flightrecorder-linux" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+flightrecorder-mac = { version = "0.0.1", path = "../flightrecorder-mac" }
+
+[features]
+default = []
+
+[lints]
+workspace = true

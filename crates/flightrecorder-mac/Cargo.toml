@@ -1,0 +1,22 @@
+[package]
+name = "flightrecorder-mac"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "macOS-specific implementation for flightrecorder"
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "flightrecorder_mac"
+path = "src/lib.rs"
+
+[dependencies]
+# macOS-specific dependencies will go here
+
+[lints]
+workspace = true
