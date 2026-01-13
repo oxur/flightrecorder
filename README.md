@@ -45,29 +45,38 @@ cargo build --release
 cargo install --path .
 
 # Start the daemon
-flightrecorder daemon start
+fliterec daemon start
 ```
 
 ## Usage
 
 ```bash
 # Check status
-flightrecorder status
+fliterec status
 
 # Search your history
-flightrecorder search "that prompt I wrote"
+fliterec search "that prompt I wrote"
 
 # Recover recent input
-flightrecorder recover --last 10
+fliterec recover --last 10
 
 # Recover from a specific app
-flightrecorder recover --app "Claude" --last 5
+fliterec recover --app "Claude" --last 5
 
 # Recover from a time range
-flightrecorder recover --since "1 hour ago"
+fliterec recover --since "1 hour ago"
 
 # Interactive recovery (TUI)
-flightrecorder recover --interactive
+fliterec recover --interactive
+```
+
+We also provide the means for users to easily update configuration without having to create a copy of the file(s) in question, etc. Additional commands are used to find the config file on the file system or to display the contents of the file:
+
+```bash
+fliterec config set <key> <value>
+fliterec config unset <key>
+fliterec config path
+fliterec config show
 ```
 
 ## How It Works
@@ -140,36 +149,42 @@ retention_days = 30
 
 ## Architecture
 
+The project is organized as a Cargo workspace with platform-specific crates:
+
 ```
 flightrecorder/
-├── src/
-│   ├── main.rs              # CLI entry point
-│   ├── daemon/
-│   │   ├── mod.rs           # Daemon orchestration
-│   │   ├── clipboard.rs     # Clipboard monitoring
-│   │   └── accessibility.rs # Text field snapshots
-│   ├── platform/
-│   │   ├── mod.rs           # Platform abstraction
-│   │   ├── macos/           # macOS implementations
-│   │   └── linux/           # Linux (X11 + Wayland)
-│   ├── storage/
-│   │   ├── mod.rs           # Storage abstraction
-│   │   ├── database.rs      # SQLite storage
-│   │   └── pruning.rs       # Automatic cleanup
-│   ├── privacy/
-│   │   ├── mod.rs           # Privacy filtering
-│   │   └── patterns.rs      # Sensitive data detection
-│   └── cli/
-│       ├── mod.rs           # CLI commands
-│       ├── search.rs        # Search functionality
-│       └── recover.rs       # Recovery interface
-├── config/
-│   └── default.toml         # Default configuration
-└── docs/
-    ├── ARCHITECTURE.md      # Detailed design docs
-    ├── PRIVACY.md           # Privacy deep-dive
-    └── PLATFORM_SUPPORT.md  # Platform-specific notes
+├── Cargo.toml                    # Workspace configuration
+├── crates/
+│   ├── flightrecorder/           # Main binary crate (CLI: `fliterec`)
+│   │   └── src/
+│   │       ├── main.rs           # CLI entry point
+│   │       ├── cli/              # Command implementations
+│   │       ├── daemon/           # Daemon orchestration
+│   │       ├── storage/          # Database and pruning
+│   │       └── privacy/          # Sensitive data filtering
+│   ├── flightrecorder-mac/       # macOS platform library
+│   │   └── src/
+│   │       ├── clipboard.rs      # Pasteboard monitoring
+│   │       └── accessibility.rs  # Accessibility API integration
+│   ├── flightrecorder-linux/     # Linux platform library
+│   │   └── src/
+│   │       ├── clipboard.rs      # X11/Wayland clipboard
+│   │       └── accessibility.rs  # AT-SPI integration
+│   └── design/                   # Documentation crate (oxur-odm)
+│       ├── docs/                 # Managed design documents (ODDs)
+│       └── dev/                  # Developer documentation
+├── docs/                         # User-facing documentation
+│   ├── usage.md                  # CLI and daemon usage
+│   ├── privacy.md                # Privacy deep-dive
+│   └── platform-support.md       # Platform-specific notes
+├── assets/
+│   ├── ai/                       # AI assistant resources
+│   └── images/                   # Logos and graphics
+└── config/
+    └── default.toml              # Default configuration
 ```
+
+Platform-specific code is conditionally compiled via `cfg(target_os = ...)` dependencies in the main binary crate.
 
 ## Platform Support
 
@@ -234,6 +249,47 @@ github  git@github.com:oxur/flightrecorder.git (push)
 ```
 
 - `make push` pushes changes to both code hosting services
+
+### AI
+
+If you are using AI, this repo provides a CLAUDE.md file which expects you to have the oxur/ai-rust guidelines set up in the project. If you have already cloned that repo, you can create a sym link here:
+
+```shell
+cd ./assets/ai
+ln -s <PATH-TO-AI-RUST-CLONE> ./ai-rust
+```
+
+If you don't have ai-rust installed, you can use the following `make` target to do so:
+
+```shell
+make ai-rust
+```
+
+or run it manually:
+
+```shell
+git clone git@github.com:oxur/ai-rust.git ./assets/ai/ai-rust
+```
+
+Once you're ready to give an AI agent some instructions, the following tends to work pretty well for Rust coding sessions:
+
+```text
+We're going to be working on X in this session.
+
+However, before I go into details with you on that, I need you to do some context preparation:
+- please read CLAUDE.me for general knowledge of the project and the basic resources available to you
+- that document will have a link to a SKILL.md file; please read!
+- you will also be pointed to a collection of Rust best practices, guides, pitfalls, and antipatterns -- please examine for general use and identify the guides that will be most useful for our task at hand
+- in particular, we will be exploring X, so look for guides that will best assist in following correct patterns for that topic
+```
+
+Or, once you have already started:
+
+```text
+We're going to be switching gears to work on Y right now. I need you to first brush up on CLAUDE.md and the useful info in SKILL.md.
+
+In particular, I want you to reexamine the Rust development guides available to you that would be most helpful in correctly planning and writing code for Y.
+```
 
 ## License
 

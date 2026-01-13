@@ -19,9 +19,10 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 RUST_VERSION := $(shell rustc --version 2>/dev/null || echo "unknown")
 
 # List of binaries to build and install
-BINARIES := frec odm
+BINARIES := fliterec odm
 
 # External tools configuration
+AI_RUST := ./assets/ai/ai-rust
 OXUR_WORKSPACE := ../oxur
 ODM_PATH := $(OXUR_WORKSPACE)/crates/oxur-odm
 ODM_TARGET := $(OXUR_WORKSPACE)/target/$(MODE)
@@ -252,6 +253,11 @@ check-all: build lint coverage
 	@echo ""
 	@echo "$(GREEN)✓ Full validation complete (build + lint + coverage)$(RESET)"
 	@echo ""
+
+$(AI_RUST):
+	@echo "$(BLUE)Cloning ai-rust skill ...$(RESET)"
+	@git clone git@github.com:oxur/ai-rust.git ./assets/ai/ai-rust
+	@echo "$(GREEN)✓ ai-rust set up$(RESET)"
 
 # Utility targets
 .PHONY: tracked-files

@@ -12,7 +12,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [[bin]]
-name = "frec"
+name = "fliterec"
 path = "src/main.rs"
 
 [dependencies]
