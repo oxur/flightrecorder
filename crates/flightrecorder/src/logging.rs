@@ -56,19 +56,17 @@ pub fn init_logging(verbosity: Verbosity) {
     let default_filter = format!("flightrecorder={}", verbosity.to_level_filter());
 
     // Allow RUST_LOG to override
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(&default_filter));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&default_filter));
 
     // Configure the subscriber
-    let subscriber = tracing_subscriber::registry()
-        .with(env_filter)
-        .with(
-            fmt::layer()
-                .with_target(true)
-                .with_thread_ids(false)
-                .with_file(false)
-                .with_line_number(false),
-        );
+    let subscriber = tracing_subscriber::registry().with(env_filter).with(
+        fmt::layer()
+            .with_target(true)
+            .with_thread_ids(false)
+            .with_file(false)
+            .with_line_number(false),
+    );
 
     // Install the subscriber (ignore error if already set)
     let _ = subscriber.try_init();
