@@ -20,6 +20,10 @@ version: 1.0
 
 This plan outlines a phased implementation approach, starting with macOS support and a complete capture stack (clipboard + accessibility), then extending to Linux with appropriate fallbacks for Wayland's accessibility limitations.
 
+## Some Perspective
+
+This has been a problem for decades, why is this experience now so painful as to force the creation of this tool-based solution? Simply put, it's indirectly due to all the AI work happening on a daily basis. The time that we take to write instructions, prompts, etc., is the distillation of years of experience in problem-solving, given to AIs in a form that will allow them to do vast amounts of work in very short amounts of time. As such, the growing value per word has highlighted new costs for the loss per word. If an hour's worth of writing results in the creation of something of market value in the 10k or 100k currency, the loss of that hour is measurably (eventually) greater now than it used to be. This is a tool to safeguard that value.
+
 ---
 
 ## Discovery Summary
