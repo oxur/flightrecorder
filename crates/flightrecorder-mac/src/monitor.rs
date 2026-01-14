@@ -390,17 +390,136 @@ pub fn request_accessibility_permission() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn test_capture_type_debug() {
         assert_eq!(format!("{:?}", CaptureType::Clipboard), "Clipboard");
         assert_eq!(format!("{:?}", CaptureType::TextField), "TextField");
+        assert_eq!(format!("{:?}", CaptureType::Keystroke), "Keystroke");
+    }
+
+    #[test]
+    fn test_capture_type_clone() {
+        let ct = CaptureType::Clipboard;
+        let cloned = ct;
+        assert_eq!(ct, cloned);
+    }
+
+    #[test]
+    fn test_capture_type_copy() {
+        let ct = CaptureType::TextField;
+        let copied = ct;
+        assert_eq!(ct, copied);
+    }
+
+    #[test]
+    fn test_capture_type_eq() {
+        assert_eq!(CaptureType::Clipboard, CaptureType::Clipboard);
+        assert_ne!(CaptureType::Clipboard, CaptureType::TextField);
+        assert_ne!(CaptureType::Clipboard, CaptureType::Keystroke);
+        assert_ne!(CaptureType::TextField, CaptureType::Keystroke);
+    }
+
+    #[test]
+    fn test_capture_data_debug() {
+        let data = CaptureData {
+            content: "test content".to_string(),
+            content_hash: "hash123".to_string(),
+            timestamp: Utc::now(),
+            source_app: Some("TestApp".to_string()),
+            capture_type: CaptureType::Clipboard,
+        };
+        let debug_str = format!("{:?}", data);
+
+        assert!(debug_str.contains("CaptureData"));
+        assert!(debug_str.contains("test content"));
+        assert!(debug_str.contains("TestApp"));
+    }
+
+    #[test]
+    fn test_capture_data_clone() {
+        let data = CaptureData {
+            content: "test".to_string(),
+            content_hash: "hash".to_string(),
+            timestamp: Utc::now(),
+            source_app: None,
+            capture_type: CaptureType::TextField,
+        };
+        let cloned = data.clone();
+
+        assert_eq!(data.content, cloned.content);
+        assert_eq!(data.content_hash, cloned.content_hash);
+        assert_eq!(data.capture_type, cloned.capture_type);
+    }
+
+    #[test]
+    fn test_capture_data_with_no_source_app() {
+        let data = CaptureData {
+            content: "content".to_string(),
+            content_hash: "hash".to_string(),
+            timestamp: Utc::now(),
+            source_app: None,
+            capture_type: CaptureType::Keystroke,
+        };
+
+        assert!(data.source_app.is_none());
+        assert_eq!(data.capture_type, CaptureType::Keystroke);
     }
 
     #[test]
     fn test_monitor_type_debug() {
         assert_eq!(format!("{:?}", MonitorType::Clipboard), "Clipboard");
         assert_eq!(format!("{:?}", MonitorType::Accessibility), "Accessibility");
+    }
+
+    #[test]
+    fn test_monitor_type_clone() {
+        let mt = MonitorType::Clipboard;
+        let cloned = mt;
+        assert_eq!(mt, cloned);
+    }
+
+    #[test]
+    fn test_monitor_type_eq() {
+        assert_eq!(MonitorType::Clipboard, MonitorType::Clipboard);
+        assert_eq!(MonitorType::Accessibility, MonitorType::Accessibility);
+        assert_ne!(MonitorType::Clipboard, MonitorType::Accessibility);
+    }
+
+    #[test]
+    fn test_monitor_status_debug() {
+        let status = MonitorStatus {
+            monitor_type: MonitorType::Clipboard,
+            is_running: true,
+            has_permission: true,
+            capture_count: 42,
+            message: "Test message".to_string(),
+        };
+        let debug_str = format!("{:?}", status);
+
+        assert!(debug_str.contains("MonitorStatus"));
+        assert!(debug_str.contains("Clipboard"));
+        assert!(debug_str.contains("42"));
+        assert!(debug_str.contains("Test message"));
+    }
+
+    #[test]
+    fn test_monitor_status_clone() {
+        let status = MonitorStatus {
+            monitor_type: MonitorType::Accessibility,
+            is_running: false,
+            has_permission: false,
+            capture_count: 10,
+            message: "Stopped".to_string(),
+        };
+        let cloned = status.clone();
+
+        assert_eq!(status.monitor_type, cloned.monitor_type);
+        assert_eq!(status.is_running, cloned.is_running);
+        assert_eq!(status.has_permission, cloned.has_permission);
+        assert_eq!(status.capture_count, cloned.capture_count);
+        assert_eq!(status.message, cloned.message);
     }
 
     #[test]
@@ -412,9 +531,30 @@ mod tests {
     }
 
     #[test]
+    fn test_mac_clipboard_monitor_with_config() {
+        let config = ClipboardMonitorConfig {
+            poll_interval: Duration::from_secs(2),
+            min_content_length: 5,
+            max_content_length: 1000,
+        };
+        let monitor = MacClipboardMonitor::with_config(config);
+
+        assert!(!monitor.is_running());
+        assert!(monitor.has_permission());
+    }
+
+    #[test]
     fn test_mac_clipboard_monitor_default() {
         let monitor = MacClipboardMonitor::default();
         assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_mac_clipboard_monitor_debug() {
+        let monitor = MacClipboardMonitor::new();
+        let debug_str = format!("{:?}", monitor);
+
+        assert!(debug_str.contains("MacClipboardMonitor"));
     }
 
     #[test]
@@ -426,6 +566,46 @@ mod tests {
         assert!(!status.is_running);
         assert!(status.has_permission);
         assert_eq!(status.capture_count, 0);
+        assert_eq!(status.message, "Not running");
+    }
+
+    #[test]
+    fn test_mac_clipboard_monitor_status_running() {
+        let monitor = MacClipboardMonitor::new();
+
+        // Manually set running state
+        monitor.running.store(true, Ordering::SeqCst);
+        let status = monitor.status();
+
+        assert!(status.is_running);
+        assert_eq!(status.message, "Monitoring clipboard");
+    }
+
+    #[test]
+    fn test_mac_clipboard_monitor_stop() {
+        let monitor = MacClipboardMonitor::new();
+
+        // Set to running first
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(monitor.is_running());
+
+        // Stop it
+        monitor.stop();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_mac_clipboard_monitor_stop_handle_stops_monitor() {
+        let monitor = MacClipboardMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // Set to running
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(handle.is_running());
+
+        // Stop via handle
+        handle.stop();
+        assert!(!monitor.is_running());
     }
 
     #[test]
@@ -436,9 +616,31 @@ mod tests {
     }
 
     #[test]
+    fn test_mac_accessibility_monitor_with_config() {
+        let config = AccessibilityMonitorConfig {
+            snapshot_interval: Duration::from_secs(3),
+            skip_password_fields: false,
+            min_content_length: 10,
+            max_content_length: 5000,
+        };
+        let monitor = MacAccessibilityMonitor::with_config(config);
+
+        assert!(!monitor.is_running());
+        assert_eq!(monitor.monitor_type(), MonitorType::Accessibility);
+    }
+
+    #[test]
     fn test_mac_accessibility_monitor_default() {
         let monitor = MacAccessibilityMonitor::default();
         assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_mac_accessibility_monitor_debug() {
+        let monitor = MacAccessibilityMonitor::new();
+        let debug_str = format!("{:?}", monitor);
+
+        assert!(debug_str.contains("MacAccessibilityMonitor"));
     }
 
     #[test]
@@ -452,9 +654,106 @@ mod tests {
     }
 
     #[test]
+    fn test_mac_accessibility_monitor_status_running() {
+        let monitor = MacAccessibilityMonitor::new();
+
+        // Manually set running state
+        monitor.running.store(true, Ordering::SeqCst);
+        let status = monitor.status();
+
+        assert!(status.is_running);
+        // Message depends on permission state
+    }
+
+    #[test]
+    fn test_mac_accessibility_monitor_stop() {
+        let monitor = MacAccessibilityMonitor::new();
+
+        // Set to running first
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(monitor.is_running());
+
+        // Stop it
+        monitor.stop();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_mac_accessibility_monitor_stop_handle() {
+        let monitor = MacAccessibilityMonitor::new();
+        let handle = monitor.stop_handle();
+
+        assert!(!handle.is_running());
+    }
+
+    #[test]
+    fn test_mac_accessibility_monitor_stop_handle_stops_monitor() {
+        let monitor = MacAccessibilityMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // Set to running
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(handle.is_running());
+
+        // Stop via handle
+        handle.stop();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
     fn test_mac_monitor_handle() {
         let monitor = MacClipboardMonitor::new();
         let handle = monitor.stop_handle();
+
+        assert!(!handle.is_running());
+    }
+
+    #[test]
+    fn test_mac_monitor_handle_debug() {
+        let monitor = MacClipboardMonitor::new();
+        let handle = monitor.stop_handle();
+        let debug_str = format!("{:?}", handle);
+
+        assert!(debug_str.contains("MacMonitorHandle"));
+    }
+
+    #[test]
+    fn test_mac_monitor_handle_clone_shares_state() {
+        let monitor = MacClipboardMonitor::new();
+        let handle1 = monitor.stop_handle();
+        let handle2 = handle1.clone();
+
+        // Set running via monitor
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(handle1.is_running());
+        assert!(handle2.is_running());
+
+        // Stop via handle1
+        handle1.stop();
+        assert!(!handle2.is_running());
+    }
+
+    #[test]
+    fn test_mac_monitor_handle_with_inner_handle() {
+        let monitor = MacClipboardMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // The clipboard monitor should have an inner handle
+        monitor.running.store(true, Ordering::SeqCst);
+        handle.stop();
+
+        // After stop, both running flag and inner handle should be stopped
+        assert!(!handle.is_running());
+    }
+
+    #[test]
+    fn test_mac_monitor_handle_without_inner_handle() {
+        let monitor = MacAccessibilityMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // Accessibility monitor handle doesn't have an inner handle
+        monitor.running.store(true, Ordering::SeqCst);
+        handle.stop();
 
         assert!(!handle.is_running());
     }
@@ -464,5 +763,22 @@ mod tests {
         let (clipboard, accessibility) = create_monitors();
         assert!(!clipboard.is_running());
         assert!(!accessibility.is_running());
+        assert_eq!(clipboard.monitor_type(), MonitorType::Clipboard);
+        assert_eq!(accessibility.monitor_type(), MonitorType::Accessibility);
+    }
+
+    #[test]
+    fn test_check_accessibility_permission() {
+        // This just verifies the function doesn't panic
+        // The actual result depends on system state
+        let _result = check_accessibility_permission();
+    }
+
+    #[test]
+    fn test_request_accessibility_permission() {
+        // This just verifies the function exists and returns a bool
+        // We can't actually test permission granting in unit tests
+        // Note: This might trigger a system dialog in some environments
+        let _result = request_accessibility_permission();
     }
 }

@@ -348,12 +348,93 @@ mod tests {
     }
 
     #[test]
+    fn test_clipboard_capture_with_no_source_app() {
+        let capture = ClipboardCapture::new("test content".to_string(), None);
+
+        assert_eq!(capture.content, "test content");
+        assert!(!capture.content_hash.is_empty());
+        assert!(capture.source_app.is_none());
+    }
+
+    #[test]
+    fn test_clipboard_capture_debug() {
+        let capture = ClipboardCapture::new("test".to_string(), Some("App".to_string()));
+        let debug_str = format!("{:?}", capture);
+
+        assert!(debug_str.contains("ClipboardCapture"));
+        assert!(debug_str.contains("test"));
+        assert!(debug_str.contains("App"));
+    }
+
+    #[test]
+    fn test_clipboard_capture_clone() {
+        let capture = ClipboardCapture::new("test content".to_string(), Some("App".to_string()));
+        let cloned = capture.clone();
+
+        assert_eq!(capture.content, cloned.content);
+        assert_eq!(capture.content_hash, cloned.content_hash);
+        assert_eq!(capture.source_app, cloned.source_app);
+        assert_eq!(capture.timestamp, cloned.timestamp);
+    }
+
+    #[test]
+    fn test_clipboard_capture_eq() {
+        let capture1 = ClipboardCapture {
+            content: "test".to_string(),
+            content_hash: "hash".to_string(),
+            timestamp: Utc::now(),
+            source_app: Some("App".to_string()),
+        };
+        let capture2 = ClipboardCapture {
+            content: "test".to_string(),
+            content_hash: "hash".to_string(),
+            timestamp: capture1.timestamp,
+            source_app: Some("App".to_string()),
+        };
+
+        assert_eq!(capture1, capture2);
+    }
+
+    #[test]
+    fn test_clipboard_capture_ne() {
+        let capture1 = ClipboardCapture::new("test1".to_string(), None);
+        let capture2 = ClipboardCapture::new("test2".to_string(), None);
+
+        assert_ne!(capture1, capture2);
+    }
+
+    #[test]
     fn test_clipboard_monitor_config_default() {
         let config = ClipboardMonitorConfig::default();
 
         assert_eq!(config.poll_interval, Duration::from_millis(500));
         assert_eq!(config.min_content_length, 1);
         assert_eq!(config.max_content_length, 1_000_000);
+    }
+
+    #[test]
+    fn test_clipboard_monitor_config_clone() {
+        let config = ClipboardMonitorConfig {
+            poll_interval: Duration::from_secs(2),
+            min_content_length: 5,
+            max_content_length: 500,
+        };
+        let cloned = config.clone();
+
+        assert_eq!(config.poll_interval, cloned.poll_interval);
+        assert_eq!(config.min_content_length, cloned.min_content_length);
+        assert_eq!(config.max_content_length, cloned.max_content_length);
+    }
+
+    #[test]
+    fn test_clipboard_monitor_config_debug() {
+        let config = ClipboardMonitorConfig::default();
+        let debug_str = format!("{:?}", config);
+
+        assert!(debug_str.contains("ClipboardMonitorConfig"));
+        assert!(debug_str.contains("poll_interval"));
+        assert!(debug_str.contains("min_content_length"));
+        assert!(debug_str.contains("max_content_length"));
     }
 
     #[test]
@@ -393,6 +474,73 @@ mod tests {
     }
 
     #[test]
+    fn test_clipboard_monitor_stop() {
+        let monitor = ClipboardMonitor::new();
+
+        // Manually set running to true via the internal arc
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(monitor.is_running());
+
+        // Now stop it
+        monitor.stop();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_clipboard_monitor_debug() {
+        let monitor = ClipboardMonitor::new();
+        let debug_str = format!("{:?}", monitor);
+
+        assert!(debug_str.contains("ClipboardMonitor"));
+        assert!(debug_str.contains("config"));
+        assert!(debug_str.contains("running"));
+    }
+
+    #[test]
+    fn test_clipboard_monitor_handle_stop() {
+        let monitor = ClipboardMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // Initially not running
+        assert!(!handle.is_running());
+
+        // Set to running via the monitor
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(handle.is_running());
+
+        // Stop via the handle
+        handle.stop();
+        assert!(!handle.is_running());
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_clipboard_monitor_handle_clone_shares_state() {
+        let monitor = ClipboardMonitor::new();
+        let handle1 = monitor.stop_handle();
+        let handle2 = handle1.clone();
+
+        // Set running
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(handle1.is_running());
+        assert!(handle2.is_running());
+
+        // Stop via handle1 should affect handle2
+        handle1.stop();
+        assert!(!handle2.is_running());
+    }
+
+    #[test]
+    fn test_clipboard_monitor_handle_debug() {
+        let monitor = ClipboardMonitor::new();
+        let handle = monitor.stop_handle();
+        let debug_str = format!("{:?}", handle);
+
+        assert!(debug_str.contains("ClipboardMonitorHandle"));
+        assert!(debug_str.contains("running"));
+    }
+
+    #[test]
     fn test_clipboard_error_display() {
         let error = ClipboardError::AccessFailed("test error".to_string());
         assert_eq!(error.to_string(), "clipboard access failed: test error");
@@ -402,6 +550,21 @@ mod tests {
 
         let error = ClipboardError::ChannelClosed;
         assert_eq!(error.to_string(), "failed to send capture: channel closed");
+    }
+
+    #[test]
+    fn test_clipboard_error_debug() {
+        let error = ClipboardError::AccessFailed("test".to_string());
+        let debug_str = format!("{:?}", error);
+        assert!(debug_str.contains("AccessFailed"));
+
+        let error = ClipboardError::NotRunning;
+        let debug_str = format!("{:?}", error);
+        assert!(debug_str.contains("NotRunning"));
+
+        let error = ClipboardError::ChannelClosed;
+        let debug_str = format!("{:?}", error);
+        assert!(debug_str.contains("ChannelClosed"));
     }
 
     // Integration tests that require actual clipboard access.

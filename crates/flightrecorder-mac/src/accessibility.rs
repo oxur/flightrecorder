@@ -507,4 +507,128 @@ mod tests {
         assert_eq!(field.content, cloned.content);
         assert_eq!(field.is_password, cloned.is_password);
     }
+
+    #[test]
+    fn test_accessibility_monitor_handle_stop() {
+        let monitor = AccessibilityMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // Initially not running (stop signal not set means nothing to stop)
+        assert!(!handle.is_running());
+
+        // Clone the handle
+        let handle2 = handle.clone();
+        assert!(!handle2.is_running());
+    }
+
+    #[test]
+    fn test_accessibility_monitor_handle_clone_shares_state() {
+        let monitor = AccessibilityMonitor::new();
+        let handle1 = monitor.stop_handle();
+        let handle2 = handle1.clone();
+
+        // Both should share the same running state
+        assert_eq!(handle1.is_running(), handle2.is_running());
+    }
+
+    #[test]
+    fn test_accessibility_monitor_stop() {
+        let monitor = AccessibilityMonitor::new();
+
+        // Stop should work even when not running
+        monitor.stop();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_accessibility_monitor_config_clone() {
+        let config = AccessibilityMonitorConfig::default();
+        let cloned = config.clone();
+
+        assert_eq!(config.snapshot_interval, cloned.snapshot_interval);
+        assert_eq!(config.skip_password_fields, cloned.skip_password_fields);
+        assert_eq!(config.min_content_length, cloned.min_content_length);
+        assert_eq!(config.max_content_length, cloned.max_content_length);
+    }
+
+    #[test]
+    fn test_accessibility_monitor_config_debug() {
+        let config = AccessibilityMonitorConfig::default();
+        let debug = format!("{config:?}");
+        assert!(debug.contains("AccessibilityMonitorConfig"));
+        assert!(debug.contains("snapshot_interval"));
+    }
+
+    #[test]
+    fn test_text_field_capture_with_no_source_app() {
+        let capture = TextFieldCapture::new("content".to_string(), None, false);
+
+        assert_eq!(capture.content, "content");
+        assert!(capture.source_app.is_none());
+        assert!(!capture.is_password_field);
+    }
+
+    #[test]
+    fn test_text_field_capture_hash_different_content() {
+        let capture1 = TextFieldCapture::new("content one".to_string(), None, false);
+        let capture2 = TextFieldCapture::new("content two".to_string(), None, false);
+
+        assert_ne!(capture1.content_hash, capture2.content_hash);
+    }
+
+    #[test]
+    fn test_text_field_capture_debug() {
+        let capture = TextFieldCapture::new("test".to_string(), None, false);
+        let debug = format!("{capture:?}");
+        assert!(debug.contains("TextFieldCapture"));
+        assert!(debug.contains("content"));
+    }
+
+    #[test]
+    fn test_text_field_capture_clone() {
+        let capture = TextFieldCapture::new("test".to_string(), Some("App".to_string()), true);
+        let cloned = capture.clone();
+
+        assert_eq!(capture.content, cloned.content);
+        assert_eq!(capture.content_hash, cloned.content_hash);
+        assert_eq!(capture.source_app, cloned.source_app);
+        assert_eq!(capture.is_password_field, cloned.is_password_field);
+    }
+
+    #[test]
+    fn test_text_field_capture_eq() {
+        let capture1 = TextFieldCapture::new("test".to_string(), None, false);
+        let capture2 = capture1.clone();
+
+        // They should be equal (same content, source_app, is_password_field)
+        // Note: timestamps may differ slightly, but the eq should still work
+        // because we're comparing content, hash, source_app, is_password_field
+        assert_eq!(capture1.content, capture2.content);
+        assert_eq!(capture1.content_hash, capture2.content_hash);
+    }
+
+    #[test]
+    fn test_focused_text_field_with_no_source_app() {
+        let field = FocusedTextField {
+            content: "test".to_string(),
+            source_app: None,
+            is_password: false,
+        };
+        assert!(field.source_app.is_none());
+    }
+
+    #[test]
+    fn test_accessibility_monitor_debug() {
+        let monitor = AccessibilityMonitor::new();
+        let debug = format!("{monitor:?}");
+        assert!(debug.contains("AccessibilityMonitor"));
+    }
+
+    #[test]
+    fn test_accessibility_monitor_handle_debug() {
+        let monitor = AccessibilityMonitor::new();
+        let handle = monitor.stop_handle();
+        let debug = format!("{handle:?}");
+        assert!(debug.contains("AccessibilityMonitorHandle"));
+    }
 }
