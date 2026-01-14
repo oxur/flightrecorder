@@ -2,7 +2,7 @@
 
 We need to help users run `fliterec` as a service on macos. Let's build a dev plan around the material below.
 
-1. Create a plist file in `~/Library/LaunchAgents/org.codeberg.oxur.flightrecorder.fliterec.plist`
+1. Create a plist file in `~/Library/LaunchAgents/oxur.flightrecorder.fliterec.plist`
 2. Create content for that file along the following lines:
 
 ```
@@ -11,7 +11,7 @@ We need to help users run `fliterec` as a service on macos. Let's build a dev pl
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>org.codeberg.oxur.flightrecorder.fliterec</string>
+    <string>oxur.flightrecorder.fliterec</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -33,21 +33,35 @@ We need to help users run `fliterec` as a service on macos. Let's build a dev pl
 </plist>
 ```
 
-3. Ensure the daemon can be loaded:
+We'll probably want to put that in an `./assets/plist` directory ...
 
-```
-launchctl load ~/Library/LaunchAgents/org.codeberg.oxur.flightrecorder.fliterec.plist
+1. Ensure the daemon can be loaded:
+
+```shell
+launchctl load ~/Library/LaunchAgents/oxur.flightrecorder.fliterec.plist
 ```
 
-4. Check agent management:
+1. Check agent management:
 
-```
+```shell
 # Start
-launchctl start org.codeberg.oxur.flightrecorder.fliterec
+launchctl start oxur.flightrecorder.fliterec
 
 # Stop
-launchctl stop org.codeberg.oxur.flightrecorder.fliterec
+launchctl stop oxur.flightrecorder.fliterec
 
 # Unload (disable autostart)
-launchctl unload ~/Library/LaunchAgents/org.codeberg.oxur.flightrecorder.fliterec.plist
+launchctl unload ~/Library/LaunchAgents/oxur.flightrecorder.fliterec.plist
+```
+
+1. Provide a means of installing the binary in a preferred location for users:
+
+```shell
+./bin/fliterec install binary --path=/usr/local/bin
+```
+
+1. Provide a means of setting up launchctl for users:
+
+```shell
+fliterec install launchctl
 ```
