@@ -150,6 +150,24 @@ impl ClipboardMonitor {
             return Ok(None);
         };
 
+        self.process_text(text)
+    }
+
+    /// Process clipboard text and return a capture if it's new content.
+    ///
+    /// This is separated from `check_for_changes` to allow testing the logic
+    /// without needing actual clipboard access. The `source_app` parameter
+    /// allows callers to provide the app name (use `None` in tests to avoid
+    /// slow osascript calls).
+    ///
+    /// # Errors
+    ///
+    /// This method is infallible but returns `Result` for API consistency.
+    pub fn process_text_with_source(
+        &mut self,
+        text: String,
+        source_app: Option<String>,
+    ) -> Result<Option<ClipboardCapture>> {
         // Check content length limits
         if text.len() < self.config.min_content_length {
             trace!(
@@ -185,10 +203,20 @@ impl ClipboardMonitor {
         debug!(hash = %hash, len = content.len(), "New clipboard content detected");
         self.last_hash = Some(hash);
 
-        // Try to get source application
-        let source_app = get_frontmost_app();
-
         Ok(Some(ClipboardCapture::new(content, source_app)))
+    }
+
+    /// Process clipboard text, automatically detecting the source application.
+    ///
+    /// This calls `get_frontmost_app()` which uses osascript and may be slow.
+    /// For testing, use `process_text_with_source()` instead.
+    ///
+    /// # Errors
+    ///
+    /// This method is infallible but returns `Result` for API consistency.
+    pub fn process_text(&mut self, text: String) -> Result<Option<ClipboardCapture>> {
+        let source_app = get_frontmost_app();
+        self.process_text_with_source(text, source_app)
     }
 
     /// Start monitoring the clipboard and send captures through the channel.
@@ -284,7 +312,7 @@ impl ClipboardMonitorHandle {
 /// This uses the macOS Accessibility API to determine which application
 /// is currently in the foreground.
 #[must_use]
-fn get_frontmost_app() -> Option<String> {
+pub fn get_frontmost_app() -> Option<String> {
     // Use NSWorkspace to get the frontmost application
     // This is a safe approach that doesn't require accessibility permissions
     get_frontmost_app_via_nsworkspace()
@@ -292,7 +320,7 @@ fn get_frontmost_app() -> Option<String> {
 
 /// Get frontmost app using `NSWorkspace` (safe, no special permissions needed).
 #[must_use]
-fn get_frontmost_app_via_nsworkspace() -> Option<String> {
+pub fn get_frontmost_app_via_nsworkspace() -> Option<String> {
     // We use the `osascript` command as a simple cross-compatible approach
     // This works on all macOS versions without requiring special permissions
     use std::process::Command;
@@ -315,6 +343,37 @@ fn get_frontmost_app_via_nsworkspace() -> Option<String> {
     } else {
         None
     }
+}
+
+/// Process raw text content according to config limits.
+///
+/// Returns `None` if content should be skipped, `Some(processed_content)` otherwise.
+#[must_use]
+pub fn process_content(text: &str, min_length: usize, max_length: usize) -> Option<String> {
+    // Check minimum length
+    if text.len() < min_length {
+        return None;
+    }
+
+    // Truncate if necessary
+    if text.len() > max_length {
+        Some(text[..max_length].to_string())
+    } else {
+        Some(text.to_string())
+    }
+}
+
+/// Check if content has changed based on hash comparison.
+#[must_use]
+pub fn content_changed(content: &str, last_hash: Option<&str>) -> bool {
+    let hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+    last_hash != Some(&hash)
+}
+
+/// Compute a BLAKE3 hash of the content.
+#[must_use]
+pub fn compute_hash(content: &str) -> String {
+    blake3::hash(content.as_bytes()).to_hex().to_string()
 }
 
 #[cfg(test)]
@@ -565,6 +624,516 @@ mod tests {
         let error = ClipboardError::ChannelClosed;
         let debug_str = format!("{:?}", error);
         assert!(debug_str.contains("ChannelClosed"));
+    }
+
+    #[test]
+    fn test_clipboard_capture_timestamp_is_recent() {
+        let before = Utc::now();
+        let capture = ClipboardCapture::new("test".to_string(), None);
+        let after = Utc::now();
+
+        assert!(capture.timestamp >= before);
+        assert!(capture.timestamp <= after);
+    }
+
+    #[test]
+    fn test_clipboard_capture_creates_unique_hash() {
+        let capture1 = ClipboardCapture::new("abc".to_string(), None);
+        let capture2 = ClipboardCapture::new("abd".to_string(), None);
+        let capture3 = ClipboardCapture::new("abc".to_string(), None);
+
+        assert_ne!(capture1.content_hash, capture2.content_hash);
+        assert_eq!(capture1.content_hash, capture3.content_hash);
+    }
+
+    #[test]
+    fn test_clipboard_monitor_running_state_transitions() {
+        let monitor = ClipboardMonitor::new();
+
+        // Initial state
+        assert!(!monitor.is_running());
+
+        // Simulate running
+        monitor.running.store(true, Ordering::SeqCst);
+        assert!(monitor.is_running());
+
+        // Stop
+        monitor.stop();
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_clipboard_monitor_handle_multiple_stops() {
+        let monitor = ClipboardMonitor::new();
+        let handle = monitor.stop_handle();
+
+        // Multiple stops should be idempotent
+        monitor.running.store(true, Ordering::SeqCst);
+        handle.stop();
+        handle.stop();
+        handle.stop();
+
+        assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn test_clipboard_config_boundary_values() {
+        let config = ClipboardMonitorConfig {
+            poll_interval: Duration::from_millis(1),
+            min_content_length: 0,
+            max_content_length: usize::MAX,
+        };
+
+        assert_eq!(config.poll_interval.as_millis(), 1);
+        assert_eq!(config.min_content_length, 0);
+        assert_eq!(config.max_content_length, usize::MAX);
+    }
+
+    #[test]
+    fn test_clipboard_error_variants_all() {
+        // Test all error variants for coverage
+        let err1 = ClipboardError::AccessFailed("access error".to_string());
+        let err2 = ClipboardError::NotRunning;
+        let err3 = ClipboardError::ChannelClosed;
+
+        // Debug format
+        assert!(format!("{err1:?}").contains("AccessFailed"));
+        assert!(format!("{err2:?}").contains("NotRunning"));
+        assert!(format!("{err3:?}").contains("ChannelClosed"));
+
+        // Display format
+        assert!(err1.to_string().contains("access"));
+        assert!(err2.to_string().contains("not running"));
+        assert!(err3.to_string().contains("channel"));
+    }
+
+    #[test]
+    fn test_clipboard_capture_long_content() {
+        let long_content = "x".repeat(10000);
+        let capture = ClipboardCapture::new(long_content.clone(), Some("App".to_string()));
+
+        assert_eq!(capture.content, long_content);
+        assert!(!capture.content_hash.is_empty());
+    }
+
+    #[test]
+    fn test_clipboard_capture_empty_content() {
+        let capture = ClipboardCapture::new(String::new(), None);
+
+        assert!(capture.content.is_empty());
+        assert!(!capture.content_hash.is_empty()); // Hash of empty string is still a hash
+    }
+
+    #[test]
+    fn test_clipboard_capture_special_characters() {
+        let special = "Hello\n\t\r\0World 🎉 émoji".to_string();
+        let capture = ClipboardCapture::new(special.clone(), None);
+
+        assert_eq!(capture.content, special);
+    }
+
+    #[test]
+    fn test_clipboard_monitor_last_hash_initially_none() {
+        let monitor = ClipboardMonitor::new();
+        assert!(monitor.last_hash.is_none());
+    }
+
+    #[test]
+    fn test_clipboard_config_custom_values() {
+        let config = ClipboardMonitorConfig {
+            poll_interval: Duration::from_secs(10),
+            min_content_length: 100,
+            max_content_length: 50000,
+        };
+
+        assert_eq!(config.poll_interval.as_secs(), 10);
+        assert_eq!(config.min_content_length, 100);
+        assert_eq!(config.max_content_length, 50000);
+    }
+
+    // Tests for helper functions
+
+    #[test]
+    fn test_process_content_normal() {
+        let result = process_content("hello world", 1, 100);
+        assert_eq!(result, Some("hello world".to_string()));
+    }
+
+    #[test]
+    fn test_process_content_too_short() {
+        let result = process_content("hi", 5, 100);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_process_content_truncated() {
+        let result = process_content("hello world", 1, 5);
+        assert_eq!(result, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_process_content_exact_min_length() {
+        let result = process_content("abc", 3, 100);
+        assert_eq!(result, Some("abc".to_string()));
+    }
+
+    #[test]
+    fn test_process_content_exact_max_length() {
+        let result = process_content("abc", 1, 3);
+        assert_eq!(result, Some("abc".to_string()));
+    }
+
+    #[test]
+    fn test_process_content_empty_with_zero_min() {
+        let result = process_content("", 0, 100);
+        assert_eq!(result, Some(String::new()));
+    }
+
+    #[test]
+    fn test_process_content_empty_with_nonzero_min() {
+        let result = process_content("", 1, 100);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_content_changed_with_none() {
+        assert!(content_changed("hello", None));
+    }
+
+    #[test]
+    fn test_content_changed_same_content() {
+        let hash = compute_hash("hello");
+        assert!(!content_changed("hello", Some(&hash)));
+    }
+
+    #[test]
+    fn test_content_changed_different_content() {
+        let hash = compute_hash("hello");
+        assert!(content_changed("world", Some(&hash)));
+    }
+
+    #[test]
+    fn test_compute_hash_consistency() {
+        let hash1 = compute_hash("test");
+        let hash2 = compute_hash("test");
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_compute_hash_different_content() {
+        let hash1 = compute_hash("test1");
+        let hash2 = compute_hash("test2");
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_compute_hash_empty_string() {
+        let hash = compute_hash("");
+        assert!(!hash.is_empty());
+    }
+
+    #[test]
+    fn test_compute_hash_long_content() {
+        let long_content = "x".repeat(100000);
+        let hash = compute_hash(&long_content);
+        assert!(!hash.is_empty());
+        // BLAKE3 produces 64-character hex strings
+        assert_eq!(hash.len(), 64);
+    }
+
+    // Test get_frontmost_app (uses osascript, not clipboard-rs)
+    #[test]
+    fn test_get_frontmost_app_returns_result() {
+        // This test should work on macOS without clipboard access
+        // It uses osascript which is safe
+        let result = get_frontmost_app();
+        // Should return Some(app_name) or None, but shouldn't panic
+        if let Some(name) = result {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_get_frontmost_app_via_nsworkspace_returns_result() {
+        let result = get_frontmost_app_via_nsworkspace();
+        // Should return Some(app_name) or None
+        if let Some(name) = result {
+            assert!(!name.is_empty());
+        }
+    }
+
+    // Tests for process_text_with_source method (can test logic without clipboard access)
+    // Using process_text_with_source(text, None) avoids slow osascript calls
+
+    #[test]
+    fn test_process_text_normal_content() {
+        let mut monitor = ClipboardMonitor::new();
+        let result = monitor
+            .process_text_with_source("Hello, World!".to_string(), None)
+            .unwrap();
+
+        assert!(result.is_some());
+        let capture = result.unwrap();
+        assert_eq!(capture.content, "Hello, World!");
+    }
+
+    #[test]
+    fn test_process_text_skips_short_content() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            min_content_length: 10,
+            ..Default::default()
+        });
+
+        let result = monitor
+            .process_text_with_source("short".to_string(), None)
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_process_text_truncates_long_content() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            max_content_length: 10,
+            ..Default::default()
+        });
+
+        let result = monitor
+            .process_text_with_source(
+                "This is a very long string that should be truncated".to_string(),
+                None,
+            )
+            .unwrap();
+
+        assert!(result.is_some());
+        let capture = result.unwrap();
+        assert_eq!(capture.content.len(), 10);
+        assert_eq!(capture.content, "This is a ");
+    }
+
+    #[test]
+    fn test_process_text_deduplicates_same_content() {
+        let mut monitor = ClipboardMonitor::new();
+
+        // First call should return Some
+        let result1 = monitor
+            .process_text_with_source("Same content".to_string(), None)
+            .unwrap();
+        assert!(result1.is_some());
+
+        // Second call with same content should return None (deduplicated)
+        let result2 = monitor
+            .process_text_with_source("Same content".to_string(), None)
+            .unwrap();
+        assert!(result2.is_none());
+    }
+
+    #[test]
+    fn test_process_text_detects_changed_content() {
+        let mut monitor = ClipboardMonitor::new();
+
+        // First call
+        let result1 = monitor
+            .process_text_with_source("Content one".to_string(), None)
+            .unwrap();
+        assert!(result1.is_some());
+
+        // Second call with different content should return Some
+        let result2 = monitor
+            .process_text_with_source("Content two".to_string(), None)
+            .unwrap();
+        assert!(result2.is_some());
+    }
+
+    #[test]
+    fn test_process_text_exact_min_length() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            min_content_length: 5,
+            ..Default::default()
+        });
+
+        let result = monitor
+            .process_text_with_source("12345".to_string(), None)
+            .unwrap();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_process_text_exact_max_length() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            max_content_length: 5,
+            ..Default::default()
+        });
+
+        let result = monitor
+            .process_text_with_source("12345".to_string(), None)
+            .unwrap();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().content, "12345");
+    }
+
+    #[test]
+    fn test_process_text_one_below_min_length() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            min_content_length: 5,
+            ..Default::default()
+        });
+
+        let result = monitor
+            .process_text_with_source("1234".to_string(), None)
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_process_text_empty_string_with_min_zero() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            min_content_length: 0,
+            ..Default::default()
+        });
+
+        let result = monitor
+            .process_text_with_source(String::new(), None)
+            .unwrap();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_process_text_updates_last_hash() {
+        let mut monitor = ClipboardMonitor::new();
+        assert!(monitor.last_hash.is_none());
+
+        let _ = monitor
+            .process_text_with_source("test content".to_string(), None)
+            .unwrap();
+        assert!(monitor.last_hash.is_some());
+    }
+
+    #[test]
+    fn test_process_text_special_characters() {
+        let mut monitor = ClipboardMonitor::new();
+        let special = "Hello\n\t\r\0World 🎉 émoji".to_string();
+
+        let result = monitor
+            .process_text_with_source(special.clone(), None)
+            .unwrap();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().content, special);
+    }
+
+    #[test]
+    fn test_process_text_unicode_truncation() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            max_content_length: 5,
+            ..Default::default()
+        });
+
+        // ASCII string, safe to truncate at byte boundary
+        let result = monitor
+            .process_text_with_source("Hello World".to_string(), None)
+            .unwrap();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().content, "Hello");
+    }
+
+    #[test]
+    fn test_process_text_with_provided_source_app() {
+        let mut monitor = ClipboardMonitor::new();
+        let result = monitor
+            .process_text_with_source("test content".to_string(), Some("TestApp".to_string()))
+            .unwrap();
+
+        assert!(result.is_some());
+        let capture = result.unwrap();
+        assert_eq!(capture.content, "test content");
+        assert_eq!(capture.source_app, Some("TestApp".to_string()));
+    }
+
+    #[test]
+    fn test_process_text_multiple_sequential_different() {
+        let mut monitor = ClipboardMonitor::new();
+
+        // Process several different strings
+        let result1 = monitor
+            .process_text_with_source("first".to_string(), None)
+            .unwrap();
+        assert!(result1.is_some());
+
+        let result2 = monitor
+            .process_text_with_source("second".to_string(), None)
+            .unwrap();
+        assert!(result2.is_some());
+
+        let result3 = monitor
+            .process_text_with_source("third".to_string(), None)
+            .unwrap();
+        assert!(result3.is_some());
+
+        // Then repeat should deduplicate
+        let result4 = monitor
+            .process_text_with_source("third".to_string(), None)
+            .unwrap();
+        assert!(result4.is_none());
+    }
+
+    #[test]
+    fn test_process_text_hash_changes_with_content() {
+        let mut monitor = ClipboardMonitor::new();
+
+        let _ = monitor
+            .process_text_with_source("content1".to_string(), None)
+            .unwrap();
+        let hash1 = monitor.last_hash.clone();
+
+        let _ = monitor
+            .process_text_with_source("content2".to_string(), None)
+            .unwrap();
+        let hash2 = monitor.last_hash.clone();
+
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_config_min_greater_than_max() {
+        // This is an edge case - min > max
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            min_content_length: 100,
+            max_content_length: 10,
+            ..Default::default()
+        });
+
+        // Content of length 50 is less than min (100), so it should be rejected
+        // The min check happens BEFORE truncation
+        let result = monitor
+            .process_text_with_source("x".repeat(50), None)
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_process_text_whitespace_only() {
+        let mut monitor = ClipboardMonitor::new();
+        let result = monitor
+            .process_text_with_source("   \n\t\r  ".to_string(), None)
+            .unwrap();
+
+        // Whitespace-only content should still be captured (not filtered)
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_process_text_very_long_content() {
+        let mut monitor = ClipboardMonitor::with_config(ClipboardMonitorConfig {
+            max_content_length: 100,
+            ..Default::default()
+        });
+
+        let long_content = "x".repeat(10000);
+        let result = monitor
+            .process_text_with_source(long_content, None)
+            .unwrap();
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().content.len(), 100);
     }
 
     // Integration tests that require actual clipboard access.

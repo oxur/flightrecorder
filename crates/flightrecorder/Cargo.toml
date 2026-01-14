@@ -57,10 +57,10 @@ dirs.workspace = true
 
 # Platform-specific dependencies are automatically included based on target OS
 [target.'cfg(target_os = "linux")'.dependencies]
-flightrecorder-linux = { version = "0.0.1", path = "../flightrecorder-linux" }
+flightrecorder-linux = { version = "0.1.0", path = "../flightrecorder-linux" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-flightrecorder-mac = { version = "0.0.1", path = "../flightrecorder-mac" }
+flightrecorder-mac = { version = "0.1.0", path = "../flightrecorder-mac" }
 
 [features]
 default = []

@@ -10,6 +10,9 @@
 * [ ] Decide upon export/dump format (see `crates/design/dev/0002-ai-diagnostic-data-export-guide.md`)
 * [ ] We should add a `fliterec stream` or `fliterec tail` that updates the `fliterec` in daemon mode to write to stdout or stderr
 * [ ] Add `launchctl` support (see dev doc 0001)
+* could you write a report to workbench on the current project implementation status and what you intend to work
+  on next? I think I will be working from another computer for the rest of the evening, so I will want to share
+  that status as part of the context for a new Claude Code instance :-)
 
 ## Completed
 

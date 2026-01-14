@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Duncan McGreggor <oubiwan@gmail.com>"]
@@ -27,7 +27,7 @@ clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 
 # Storage
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
 
 # Configuration
 figment = { version = "0.10", features = ["toml", "env"] }
@@ -57,13 +57,13 @@ regex = "1.10"
 blake3 = "1.5"
 
 # Clipboard access
-clipboard-rs = "0.2"
+clipboard-rs = "0.3.1"
 
 # macOS accessibility
 macos-accessibility-client = "0.0.1"
 
 # System directories
-dirs = "5.0"
+dirs = "6.0"
 
 # Design docs (dev only)
 oxur-odm = "0.1"
