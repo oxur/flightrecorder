@@ -254,6 +254,10 @@ github  git@github.com:oxur/flightrecorder.git (push)
 
 - `make push` pushes changes to both code hosting services
 
+### Testing
+
+Note that when running the tests, due to the nature of text capture and the APIs getting tested, you will likely be asked to grant permissions to your terminal, IDE, or `cargo`. Declining access is no problem, but you may see failed tests as a result.
+
 ### AI
 
 If you are using AI, this repo provides a CLAUDE.md file which expects you to have the oxur/ai-rust guidelines set up in the project. If you have already cloned that repo, you can create a sym link here:
